@@ -52,6 +52,12 @@ app.include_router(audit.router, prefix=settings.api_v1_prefix)
 app.include_router(integrations.router, prefix=settings.api_v1_prefix)
 
 
+@app.get("/health")
+def health_check():
+    """Health check endpoint для Docker и мониторинга"""
+    return {"status": "ok"}
+
+
 @app.on_event("startup")
 def seed_admin_user() -> None:
     if not settings.seed_admin_enabled:
