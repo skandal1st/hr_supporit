@@ -69,10 +69,34 @@ def fetch_supporit_users() -> list[dict]:
 def update_supporit_user(user_id: str, payload: dict) -> bool:
     if not settings.supporit_api_url or not settings.supporit_token:
         return False
+    base_url = settings.supporit_api_url.rstrip("/")
+    headers = {"Authorization": f"Bearer {settings.supporit_token}"}
+    try:
+        with httpx.Client(timeout=settings.supporit_timeout_seconds, headers=headers) as client:
+            response = client.put(f"{base_url}/users/{user_id}", json=payload)
+            response.raise_for_status()
+            return True
+    except httpx.HTTPError:
+        return False
 
 
 def create_supporit_ticket(title: str, description: str, category: str = "hr") -> bool:
     if not settings.supporit_api_url or not settings.supporit_token:
+        return False
+    base_url = settings.supporit_api_url.rstrip("/")
+    headers = {"Authorization": f"Bearer {settings.supporit_token}"}
+    payload = {
+        "title": title,
+        "description": description,
+        "category": category,
+        "priority": "medium",
+    }
+    try:
+        with httpx.Client(timeout=settings.supporit_timeout_seconds, headers=headers) as client:
+            response = client.post(f"{base_url}/tickets", json=payload)
+            response.raise_for_status()
+            return True
+    except httpx.HTTPError:
         return False
 
 
@@ -187,30 +211,6 @@ def fetch_zup_employees() -> list[dict]:
             return payload.get("value", payload.get("data", []))
     except httpx.HTTPError:
         return []
-    base_url = settings.supporit_api_url.rstrip("/")
-    headers = {"Authorization": f"Bearer {settings.supporit_token}"}
-    payload = {
-        "title": title,
-        "description": description,
-        "category": category,
-        "priority": "medium",
-    }
-    try:
-        with httpx.Client(timeout=settings.supporit_timeout_seconds, headers=headers) as client:
-            response = client.post(f"{base_url}/tickets", json=payload)
-            response.raise_for_status()
-            return True
-    except httpx.HTTPError:
-        return False
-    base_url = settings.supporit_api_url.rstrip("/")
-    headers = {"Authorization": f"Bearer {settings.supporit_token}"}
-    try:
-        with httpx.Client(timeout=settings.supporit_timeout_seconds, headers=headers) as client:
-            response = client.put(f"{base_url}/users/{user_id}", json=payload)
-            response.raise_for_status()
-            return True
-    except httpx.HTTPError:
-        return False
 
 
 def fetch_equipment_for_employee(employee_id: int, email: str | None = None) -> list[dict]:

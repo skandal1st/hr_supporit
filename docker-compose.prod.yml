@@ -8,11 +8,17 @@ services:
     env_file:
       - .env.prod
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"  # Только localhost для безопасности
     volumes:
       - ./backend/app:/app/app:Z
       - ./backend/data:/data:Z
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   frontend:
     build:
@@ -21,7 +27,8 @@ services:
       args:
         - VITE_API_BASE=/api/v1
     ports:
-      - "8080:80"
+      - "127.0.0.1:8080:80"  # Только localhost для безопасности
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped

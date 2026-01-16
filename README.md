@@ -25,25 +25,49 @@ docker compose up --build
 Откройте `http://localhost:8080` (API проксируется через nginx на `/api/*`).
 Файл базы SQLite будет лежать в `backend/data/hr_desk.db`.
 
-## Прод‑развертывание (минимум)
+## Прод‑развертывание
+
+Подробное руководство: **[DEPLOYMENT.md](DEPLOYMENT.md)**
+
+### Быстрый старт
+
 ```bash
-cd /home/skandal1st/projects/HR_desk
+cd hr_supporit
 cp env.prod.sample .env.prod
-docker compose -f docker-compose.prod.yml up -d --build
+# Отредактируйте .env.prod и укажите настройки синхронизации с SupporIT
+./scripts/deploy.sh
 ```
+
+### Настройка домена hrdesk.teplocentral.local
+
+1. Настройте nginx (см. [DEPLOYMENT.md](DEPLOYMENT.md)):
+   ```bash
+   sudo cp scripts/nginx-hrdesk.conf /etc/nginx/sites-available/hrdesk
+   sudo ln -s /etc/nginx/sites-available/hrdesk /etc/nginx/sites-enabled/
+   sudo systemctl reload nginx
+   ```
+2. Убедитесь, что домен указывает на IP сервера
 
 ## Синхронизация с SupporIT
-Для получения оборудования из SupporIT укажите переменные:
-```
-SUPPORIT_API_URL=https://supporit.example.com/api
-SUPPORIT_TOKEN=jwt_token
-```
-HR backend будет запрашивать `GET /equipment?owner_id=<employee_id>`.
-Проверка соединения: `GET /api/v1/integrations/supporit/health`.
 
-Также доступны ручные синхронизации:
-- `POST /api/v1/integrations/supporit/pull-users` — подтянуть пользователей из SupporIT в HR.
-- `POST /api/v1/integrations/supporit/push-contacts` — обновить контакты в SupporIT из HR.
+HR Desk может синхронизировать данные с системой SupporIT. Подробная инструкция по настройке: **[SYNC_SETUP.md](SYNC_SETUP.md)**
+
+### Быстрая настройка
+
+1. Получите JWT токен из SupporIT (см. [SYNC_SETUP.md](SYNC_SETUP.md))
+2. Настройте переменные в `.env.prod`:
+   ```
+   SUPPORIT_API_URL=http://localhost:3001/api
+   SUPPORIT_TOKEN=your_jwt_token_here
+   ```
+3. Проверьте подключение: `GET /api/v1/integrations/supporit/health`
+
+### Доступные операции синхронизации
+
+- `GET /api/v1/integrations/supporit/health` — проверка соединения
+- `POST /api/v1/integrations/supporit/pull-users` — подтянуть пользователей из SupporIT в HR
+- `POST /api/v1/integrations/supporit/push-contacts` — обновить контакты в SupporIT из HR
+- `GET /api/v1/integrations/supporit/{employee_id}` — получить оборудование сотрудника
 
 ## Интеграция Active Directory
 ```
