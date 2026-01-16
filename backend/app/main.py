@@ -17,6 +17,7 @@ from app.api.routes import (
     org,
     phonebook,
     positions,
+    zup,
 )
 from app.core.config import settings
 from app.core.security import get_password_hash
@@ -50,6 +51,7 @@ app.include_router(org.router, prefix=settings.api_v1_prefix)
 app.include_router(equipment.router, prefix=settings.api_v1_prefix)
 app.include_router(audit.router, prefix=settings.api_v1_prefix)
 app.include_router(integrations.router, prefix=settings.api_v1_prefix)
+app.include_router(zup.router, prefix=settings.api_v1_prefix)
 
 
 @app.get("/health")
@@ -80,6 +82,7 @@ def seed_admin_user() -> None:
 
 def ensure_schema() -> None:
     with engine.begin() as connection:
+        # Departments
         result = connection.execute(text("PRAGMA table_info(departments)"))
         columns = {row[1] for row in result.fetchall()}
         if "manager_id" not in columns:
@@ -87,6 +90,13 @@ def ensure_schema() -> None:
                 connection.execute(text("ALTER TABLE departments ADD COLUMN manager_id INTEGER"))
             except Exception:
                 pass
+        if "external_id" not in columns:
+            try:
+                connection.execute(text("ALTER TABLE departments ADD COLUMN external_id VARCHAR(128)"))
+            except Exception:
+                pass
+        
+        # Positions
         result = connection.execute(text("PRAGMA table_info(positions)"))
         position_columns = {row[1] for row in result.fetchall()}
         if "department_id" not in position_columns:
@@ -94,6 +104,13 @@ def ensure_schema() -> None:
                 connection.execute(text("ALTER TABLE positions ADD COLUMN department_id INTEGER"))
             except Exception:
                 pass
+        if "external_id" not in position_columns:
+            try:
+                connection.execute(text("ALTER TABLE positions ADD COLUMN external_id VARCHAR(128)"))
+            except Exception:
+                pass
+        
+        # Employees
         result = connection.execute(text("PRAGMA table_info(employees)"))
         employee_columns = {row[1] for row in result.fetchall()}
         if "external_id" not in employee_columns:

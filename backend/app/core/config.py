@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     zup_api_url: str | None = None
     zup_username: str | None = None
     zup_password: str | None = None
+    zup_webhook_token: str | None = None  # Токен для аутентификации webhook от 1С
     seed_admin_enabled: bool = True
     seed_admin_email: str = "utkin@teplocentral.org"
     seed_admin_password: str = "23solomon7"
