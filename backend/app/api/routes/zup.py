@@ -2,14 +2,15 @@
 API endpoints для интеграции с 1С ЗУП.
 
 Поддерживает:
-- Ручную синхронизацию данных
+- Ручную синхронизацию данных через OData API
+- Импорт из JSON файлов
 - Webhook для событий приёма/увольнения
 """
 
 from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, UploadFile, File, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -22,6 +23,11 @@ from app.services.zup import (
     sync_departments_from_zup,
     sync_employees_from_zup,
     sync_positions_from_zup,
+)
+from app.services.zup_file import (
+    import_from_json,
+    import_from_file,
+    import_from_directory,
 )
 
 
@@ -234,3 +240,149 @@ def handle_fire_event(
         effective_date=event.effective_date,
     )
     return {"status": "ok", "result": result}
+
+
+# === Импорт из JSON файлов ===
+
+@router.post("/import/json", dependencies=[Depends(require_roles(["hr", "it", "admin"]))])
+async def import_json_data(
+    data: dict,
+    db: Session = Depends(get_db),
+    create_hr_requests: bool = Query(
+        default=False,
+        description="Создавать HR-заявки при обнаружении приёма/увольнения"
+    ),
+) -> dict:
+    """
+    Импорт данных из JSON.
+    
+    Формат JSON:
+    ```json
+    {
+        "departments": [
+            {"id": "dept-1", "name": "Отдел продаж", "parent_id": null}
+        ],
+        "positions": [
+            {"id": "pos-1", "name": "Менеджер", "department_id": "dept-1"}
+        ],
+        "employees": [
+            {
+                "id": "emp-1",
+                "full_name": "Иванов Иван Иванович",
+                "birthday": "1990-05-15",
+                "department_id": "dept-1",
+                "position_id": "pos-1",
+                "phone": "+7 999 123-45-67",
+                "email": "ivanov@company.ru",
+                "dismissed": false,
+                "new_hire": false,
+                "effective_date": "2024-01-15"
+            }
+        ]
+    }
+    ```
+    
+    Можно передать только employees, если отделы и должности уже есть.
+    При create_hr_requests=true будут созданы заявки для new_hire=true и dismissed=true.
+    """
+    result = import_from_json(db, data, create_hr_requests)
+    
+    return {
+        "departments": {
+            "created": result.departments_created,
+            "updated": result.departments_updated,
+        },
+        "positions": {
+            "created": result.positions_created,
+            "updated": result.positions_updated,
+        },
+        "employees": {
+            "created": result.employees_created,
+            "updated": result.employees_updated,
+        },
+        "hr_requests": {
+            "hire": result.hire_requests_created,
+            "fire": result.fire_requests_created,
+        },
+        "errors": result.errors,
+    }
+
+
+@router.post("/import/file", dependencies=[Depends(require_roles(["hr", "it", "admin"]))])
+async def import_json_file(
+    file: UploadFile = File(..., description="JSON файл с данными"),
+    db: Session = Depends(get_db),
+    create_hr_requests: bool = Query(
+        default=False,
+        description="Создавать HR-заявки при обнаружении приёма/увольнения"
+    ),
+) -> dict:
+    """
+    Импорт данных из загруженного JSON файла.
+    
+    Файл должен содержать JSON в том же формате, что и /import/json.
+    """
+    import json
+    
+    try:
+        content = await file.read()
+        data = json.loads(content.decode("utf-8"))
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail=f"Ошибка парсинга JSON: {e}")
+    except UnicodeDecodeError:
+        raise HTTPException(status_code=400, detail="Файл должен быть в кодировке UTF-8")
+    
+    result = import_from_json(db, data, create_hr_requests)
+    
+    return {
+        "filename": file.filename,
+        "departments": {
+            "created": result.departments_created,
+            "updated": result.departments_updated,
+        },
+        "positions": {
+            "created": result.positions_created,
+            "updated": result.positions_updated,
+        },
+        "employees": {
+            "created": result.employees_created,
+            "updated": result.employees_updated,
+        },
+        "hr_requests": {
+            "hire": result.hire_requests_created,
+            "fire": result.fire_requests_created,
+        },
+        "errors": result.errors,
+    }
+
+
+@router.post("/import/directory", dependencies=[Depends(require_roles(["hr", "it", "admin"]))])
+def import_from_dir(
+    directory: str = Query(..., description="Путь к директории с JSON файлами"),
+    db: Session = Depends(get_db),
+    create_hr_requests: bool = Query(
+        default=False,
+        description="Создавать HR-заявки при обнаружении приёма/увольнения"
+    ),
+    archive_processed: bool = Query(
+        default=True,
+        description="Перемещать обработанные файлы в подпапку processed"
+    ),
+) -> dict:
+    """
+    Импорт всех JSON файлов из указанной директории.
+    
+    Используйте для настройки обмена через сетевую папку:
+    1. 1С выгружает JSON в папку (например, /data/zup_exchange/)
+    2. HR Desk периодически вызывает этот endpoint
+    3. Обработанные файлы перемещаются в /data/zup_exchange/processed/
+    """
+    result = import_from_directory(db, directory, create_hr_requests, archive_processed)
+    
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    
+    return {
+        "files_processed": len(result),
+        "results": result,
+    }
