@@ -5,17 +5,28 @@ type NavItem = {
   name: string;
   path: string;
   icon: React.ComponentType<{ className?: string }>;
+  requiresAuth?: boolean;
 };
 
-const navItems: NavItem[] = [
+const allNavItems: NavItem[] = [
   { name: "Телефонная книга", path: "/", icon: Phone },
   { name: "Дни рождения", path: "/birthdays", icon: CalendarDays },
-  { name: "Оргструктура", path: "/org", icon: GitBranch },
-  { name: "HR-панель", path: "/hr", icon: ClipboardList },
-  { name: "Аудит", path: "/audit", icon: ShieldCheck },
+  { name: "Оргструктура", path: "/org", icon: GitBranch, requiresAuth: true },
+  { name: "HR-панель", path: "/hr", icon: ClipboardList, requiresAuth: true },
+  { name: "Аудит", path: "/audit", icon: ShieldCheck, requiresAuth: true },
 ];
 
-export function Sidebar() {
+type SidebarProps = {
+  isAuthed?: boolean;
+  isHRorIT?: boolean;
+};
+
+export function Sidebar({ isAuthed = false, isHRorIT = false }: SidebarProps) {
+  // Фильтруем пункты меню в зависимости от авторизации
+  const navItems = allNavItems.filter(
+    (item) => !item.requiresAuth || (isAuthed && isHRorIT)
+  );
+
   return (
     <aside className="fixed top-0 left-0 h-full w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 z-40">
       <div className="flex flex-col h-full">

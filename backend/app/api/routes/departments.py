@@ -13,7 +13,7 @@ from app.services.audit import log_action
 router = APIRouter(prefix="/departments", tags=["departments"])
 
 
-@router.get("/", response_model=List[DepartmentOut], dependencies=[Depends(require_roles(["hr", "it", "manager", "auditor"]))])
+@router.get("/", response_model=List[DepartmentOut])
 def list_departments(db: Session = Depends(get_db)) -> List[Department]:
     return db.query(Department).all()
 
