@@ -17,7 +17,14 @@ from app.services.integrations import (
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 
 
-@router.get("/supporit/{employee_id}", dependencies=[Depends(require_roles(["it"]))])
+# ВАЖНО: health должен быть ПЕРЕД {employee_id}, иначе FastAPI парсит "health" как int
+@router.get("/supporit/health", dependencies=[Depends(require_roles(["it", "admin"]))])
+def supporit_healthcheck() -> dict:
+    users = fetch_supporit_users()
+    return {"status": "ok", "users_count": len(users)}
+
+
+@router.get("/supporit/{employee_id}", dependencies=[Depends(require_roles(["it", "admin"]))])
 def get_supporit_equipment(
     employee_id: int,
     db: Session = Depends(get_db),
@@ -29,12 +36,6 @@ def get_supporit_equipment(
             db.add(Equipment(**item))
         db.commit()
     return equipment
-
-
-@router.get("/supporit/health", dependencies=[Depends(require_roles(["it"]))])
-def supporit_healthcheck() -> dict:
-    users = fetch_supporit_users()
-    return {"status": "ok", "users_count": len(users)}
 
 
 @router.post("/ad/provision", dependencies=[Depends(require_roles(["it"]))])
@@ -75,7 +76,7 @@ def pull_users_from_ad(db: Session = Depends(get_db)) -> dict:
     return {"created": created, "updated": updated}
 
 
-@router.post("/supporit/pull-users", dependencies=[Depends(require_roles(["it"]))])
+@router.post("/supporit/pull-users", dependencies=[Depends(require_roles(["it", "admin"]))])
 def pull_users_from_supporit(db: Session = Depends(get_db)) -> dict:
     users = fetch_supporit_users()
     created = 0
@@ -104,7 +105,7 @@ def pull_users_from_supporit(db: Session = Depends(get_db)) -> dict:
     return {"created": created, "updated": updated}
 
 
-@router.post("/supporit/push-contacts", dependencies=[Depends(require_roles(["it", "hr"]))])
+@router.post("/supporit/push-contacts", dependencies=[Depends(require_roles(["it", "hr", "admin"]))])
 def push_contacts_to_supporit(
     db: Session = Depends(get_db),
     create_missing: bool = False,
