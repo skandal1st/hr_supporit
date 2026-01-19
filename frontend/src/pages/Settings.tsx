@@ -4,11 +4,8 @@ import { Upload, Trash2, Save } from "lucide-react";
 import { settingsService, SystemSetting } from "../api/settings";
 import { applyBranding, updateFavicon } from "../hooks/useBranding";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000/api/v1";
-
 function getBaseUrl(): string {
-  const url = new URL(API_BASE);
-  return url.origin;
+  return window.location.origin;
 }
 
 export function Settings() {
@@ -58,7 +55,9 @@ export function Settings() {
     }
   };
 
-  const handleFaviconUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFaviconUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -103,7 +102,9 @@ export function Settings() {
     return (
       <section className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Настройки</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Настройки
+          </h2>
         </div>
         <p className="text-sm text-gray-500">Загрузка...</p>
       </section>
@@ -113,7 +114,9 @@ export function Settings() {
   return (
     <section className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Настройки</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Настройки
+        </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400">
           Управление брендингом и системными настройками
         </p>
@@ -127,12 +130,16 @@ export function Settings() {
 
       {success && (
         <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-          <p className="text-sm text-green-600 dark:text-green-400">{success}</p>
+          <p className="text-sm text-green-600 dark:text-green-400">
+            {success}
+          </p>
         </div>
       )}
 
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Брендинг</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          Брендинг
+        </h3>
 
         <div className="space-y-4">
           <div className="space-y-2">
@@ -147,7 +154,10 @@ export function Settings() {
                 className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm"
                 value={editedValues["site_title"] || ""}
                 onChange={(e) =>
-                  setEditedValues((prev) => ({ ...prev, site_title: e.target.value }))
+                  setEditedValues((prev) => ({
+                    ...prev,
+                    site_title: e.target.value,
+                  }))
                 }
                 placeholder="HR Desk"
               />
@@ -166,7 +176,8 @@ export function Settings() {
               Favicon
             </label>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Иконка сайта. Поддерживаемые форматы: PNG, JPG, GIF, SVG, ICO. Максимум 1MB.
+              Иконка сайта. Поддерживаемые форматы: PNG, JPG, GIF, SVG, ICO.
+              Максимум 1MB.
             </p>
             <div className="flex items-center gap-4">
               {faviconSetting?.setting_value && (

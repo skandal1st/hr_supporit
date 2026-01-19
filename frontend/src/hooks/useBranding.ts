@@ -6,15 +6,13 @@ const DEFAULT_BRANDING: BrandingSettings = {
   site_favicon: "",
 };
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000/api/v1";
-
 function getBaseUrl(): string {
-  const url = new URL(API_BASE);
-  return url.origin;
+  return window.location.origin;
 }
 
 export function updateFavicon(faviconUrl: string): void {
-  let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
+  let link: HTMLLinkElement | null =
+    document.querySelector("link[rel*='icon']");
   if (!link) {
     link = document.createElement("link");
     link.rel = "icon";
