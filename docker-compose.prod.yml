@@ -8,14 +8,21 @@ services:
     env_file:
       - .env.prod
     ports:
-      - "127.0.0.1:8000:8000"  # Только localhost для безопасности
+      - "127.0.0.1:8000:8000" # Только localhost для безопасности
     volumes:
       - ./backend/app:/app/app:Z
       - ./backend/data:/data:Z
-      - ./exchange:/exchange:Z  # Папка для обмена JSON файлами с 1С
+      - ./backend/uploads:/app/uploads:Z
+      - ./exchange:/exchange:Z # Папка для обмена JSON файлами с 1С
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')",
+        ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -28,7 +35,7 @@ services:
       args:
         - VITE_API_BASE=/api/v1
     ports:
-      - "127.0.0.1:8080:80"  # Только localhost для безопасности
+      - "127.0.0.1:8080:80" # Только localhost для безопасности
     depends_on:
       backend:
         condition: service_healthy

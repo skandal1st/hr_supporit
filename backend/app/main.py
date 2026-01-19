@@ -1,8 +1,11 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 import threading
 import time
 from datetime import date
+from pathlib import Path
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from app.api.routes import (
@@ -19,14 +22,17 @@ from app.api.routes import (
     positions,
     zup,
 )
+from app.api.routes import (
+    settings as settings_routes,
+)
 from app.core.config import settings
 from app.core.security import get_password_hash
 from app.db.base import Base
 from app.db.session import SessionLocal, engine
 from app.models.hr_request import HRRequest
+from app.models.system_settings import SystemSettings
 from app.models.user import User
 from app.services.hr_requests import process_hr_request
-
 
 Base.metadata.create_all(bind=engine)
 
@@ -52,6 +58,12 @@ app.include_router(equipment.router, prefix=settings.api_v1_prefix)
 app.include_router(audit.router, prefix=settings.api_v1_prefix)
 app.include_router(integrations.router, prefix=settings.api_v1_prefix)
 app.include_router(zup.router, prefix=settings.api_v1_prefix)
+app.include_router(settings_routes.router, prefix=settings.api_v1_prefix)
+
+# Mount static files for uploads
+UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads"
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
 
 @app.get("/health")
@@ -66,7 +78,9 @@ def seed_admin_user() -> None:
         return
     db = SessionLocal()
     try:
-        existing = db.query(User).filter(User.username == settings.seed_admin_email).first()
+        existing = (
+            db.query(User).filter(User.username == settings.seed_admin_email).first()
+        )
         if existing:
             return
         user = User(
@@ -87,35 +101,45 @@ def ensure_schema() -> None:
         columns = {row[1] for row in result.fetchall()}
         if "manager_id" not in columns:
             try:
-                connection.execute(text("ALTER TABLE departments ADD COLUMN manager_id INTEGER"))
+                connection.execute(
+                    text("ALTER TABLE departments ADD COLUMN manager_id INTEGER")
+                )
             except Exception:
                 pass
         if "external_id" not in columns:
             try:
-                connection.execute(text("ALTER TABLE departments ADD COLUMN external_id VARCHAR(128)"))
+                connection.execute(
+                    text("ALTER TABLE departments ADD COLUMN external_id VARCHAR(128)")
+                )
             except Exception:
                 pass
-        
+
         # Positions
         result = connection.execute(text("PRAGMA table_info(positions)"))
         position_columns = {row[1] for row in result.fetchall()}
         if "department_id" not in position_columns:
             try:
-                connection.execute(text("ALTER TABLE positions ADD COLUMN department_id INTEGER"))
+                connection.execute(
+                    text("ALTER TABLE positions ADD COLUMN department_id INTEGER")
+                )
             except Exception:
                 pass
         if "external_id" not in position_columns:
             try:
-                connection.execute(text("ALTER TABLE positions ADD COLUMN external_id VARCHAR(128)"))
+                connection.execute(
+                    text("ALTER TABLE positions ADD COLUMN external_id VARCHAR(128)")
+                )
             except Exception:
                 pass
-        
+
         # Employees
         result = connection.execute(text("PRAGMA table_info(employees)"))
         employee_columns = {row[1] for row in result.fetchall()}
         if "external_id" not in employee_columns:
             try:
-                connection.execute(text("ALTER TABLE employees ADD COLUMN external_id VARCHAR(128)"))
+                connection.execute(
+                    text("ALTER TABLE employees ADD COLUMN external_id VARCHAR(128)")
+                )
             except Exception:
                 pass
 

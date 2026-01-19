@@ -1,5 +1,12 @@
 import { NavLink } from "react-router-dom";
-import { CalendarDays, ClipboardList, GitBranch, Phone, ShieldCheck } from "lucide-react";
+import {
+  CalendarDays,
+  ClipboardList,
+  GitBranch,
+  Phone,
+  Settings,
+  ShieldCheck,
+} from "lucide-react";
 
 type NavItem = {
   name: string;
@@ -14,6 +21,7 @@ const allNavItems: NavItem[] = [
   { name: "Оргструктура", path: "/org", icon: GitBranch, requiresAuth: true },
   { name: "HR-панель", path: "/hr", icon: ClipboardList, requiresAuth: true },
   { name: "Аудит", path: "/audit", icon: ShieldCheck, requiresAuth: true },
+  { name: "Настройки", path: "/settings", icon: Settings, requiresAuth: true },
 ];
 
 type SidebarProps = {
@@ -24,7 +32,7 @@ type SidebarProps = {
 export function Sidebar({ isAuthed = false, isHRorIT = false }: SidebarProps) {
   // Фильтруем пункты меню в зависимости от авторизации
   const navItems = allNavItems.filter(
-    (item) => !item.requiresAuth || (isAuthed && isHRorIT)
+    (item) => !item.requiresAuth || (isAuthed && isHRorIT),
   );
 
   return (
@@ -34,7 +42,9 @@ export function Sidebar({ isAuthed = false, isHRorIT = false }: SidebarProps) {
           <div className="bg-primary-600 p-2 rounded-lg mr-3">
             <ClipboardList className="h-6 w-6 text-white" />
           </div>
-          <span className="text-lg font-bold text-gray-900 dark:text-white">HR-IT Manager</span>
+          <span className="text-lg font-bold text-gray-900 dark:text-white">
+            HR-IT Manager
+          </span>
         </div>
         <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
           {navItems.map((item) => {

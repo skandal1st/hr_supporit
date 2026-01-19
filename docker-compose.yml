@@ -30,6 +30,7 @@ services:
     volumes:
       - ./backend/app:/app/app:Z
       - ./backend/data:/data:Z
+      - ./backend/uploads:/app/uploads:Z
 
   frontend:
     build:
