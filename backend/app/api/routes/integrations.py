@@ -153,13 +153,20 @@ def pull_accounts_from_supporit(
 
         supporit_role = su.get("role", "employee")
         hr_role = role_mapping.get(supporit_role, "auditor")
+        full_name = su.get("full_name") or su.get("fullName") or ""
 
         existing_user = db.query(User).filter(User.username == email).first()
 
         if existing_user:
-            # Обновляем роль только если она изменилась
+            # Обновляем роль и ФИО
+            changed = False
             if existing_user.role != hr_role:
                 existing_user.role = hr_role
+                changed = True
+            if full_name and existing_user.full_name != full_name:
+                existing_user.full_name = full_name
+                changed = True
+            if changed:
                 updated += 1
             else:
                 skipped += 1
@@ -169,6 +176,7 @@ def pull_accounts_from_supporit(
                 username=email,
                 hashed_password=get_password_hash(default_password),
                 role=hr_role,
+                full_name=full_name or None,
             )
             db.add(new_user)
             created += 1

@@ -7,12 +7,14 @@ class UserCreate(BaseModel):
     username: str
     password: str
     role: str
+    full_name: Optional[str] = None
 
 
 class UserOut(BaseModel):
     id: int
     username: str
     role: str
+    full_name: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -20,6 +22,7 @@ class UserOut(BaseModel):
 
 class UserUpdate(BaseModel):
     role: Optional[str] = None
+    full_name: Optional[str] = None
 
 
 class PasswordReset(BaseModel):

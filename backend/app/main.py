@@ -165,6 +165,17 @@ def ensure_schema() -> None:
             except Exception:
                 pass
 
+        # Users
+        result = connection.execute(text("PRAGMA table_info(users)"))
+        user_columns = {row[1] for row in result.fetchall()}
+        if "full_name" not in user_columns:
+            try:
+                connection.execute(
+                    text("ALTER TABLE users ADD COLUMN full_name VARCHAR(255)")
+                )
+            except Exception:
+                pass
+
 
 def start_due_requests_worker() -> None:
     def _worker() -> None:

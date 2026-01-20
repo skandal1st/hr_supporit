@@ -7,6 +7,7 @@ type User = {
   id: number;
   username: string;
   role: string;
+  full_name?: string;
 };
 
 const ROLES = [
@@ -25,7 +26,11 @@ export function Users() {
 
   // Модальное окно создания пользователя
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [newUser, setNewUser] = useState({ username: "", password: "", role: "auditor" });
+  const [newUser, setNewUser] = useState({
+    username: "",
+    password: "",
+    role: "auditor",
+  });
 
   // Модальное окно сброса пароля
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
@@ -125,7 +130,9 @@ export function Users() {
   return (
     <section className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Управление пользователями</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Управление пользователями
+        </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400">
           Просмотр пользователей, назначение ролей и сброс паролей.
         </p>
@@ -152,6 +159,9 @@ export function Users() {
                 ID
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                ФИО
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                 Логин
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
@@ -164,9 +174,19 @@ export function Users() {
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
             {users.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                <td className="px-4 py-3 text-gray-900 dark:text-white">{user.id}</td>
-                <td className="px-4 py-3 text-gray-900 dark:text-white">{user.username}</td>
+              <tr
+                key={user.id}
+                className="hover:bg-gray-50 dark:hover:bg-gray-700/50"
+              >
+                <td className="px-4 py-3 text-gray-900 dark:text-white">
+                  {user.id}
+                </td>
+                <td className="px-4 py-3 text-gray-900 dark:text-white">
+                  {user.full_name || "-"}
+                </td>
+                <td className="px-4 py-3 text-gray-900 dark:text-white">
+                  {user.username}
+                </td>
                 <td className="px-4 py-3">
                   <select
                     value={user.role}
@@ -212,7 +232,10 @@ export function Users() {
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Новый пользователь
               </h3>
-              <button onClick={() => setIsCreateModalOpen(false)} className="text-sm text-gray-500">
+              <button
+                onClick={() => setIsCreateModalOpen(false)}
+                className="text-sm text-gray-500"
+              >
                 Закрыть
               </button>
             </div>
@@ -222,19 +245,25 @@ export function Users() {
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm"
                 placeholder="Логин (email)"
                 value={newUser.username}
-                onChange={(e) => setNewUser((prev) => ({ ...prev, username: e.target.value }))}
+                onChange={(e) =>
+                  setNewUser((prev) => ({ ...prev, username: e.target.value }))
+                }
               />
               <input
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm"
                 type="password"
                 placeholder="Пароль"
                 value={newUser.password}
-                onChange={(e) => setNewUser((prev) => ({ ...prev, password: e.target.value }))}
+                onChange={(e) =>
+                  setNewUser((prev) => ({ ...prev, password: e.target.value }))
+                }
               />
               <select
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm"
                 value={newUser.role}
-                onChange={(e) => setNewUser((prev) => ({ ...prev, role: e.target.value }))}
+                onChange={(e) =>
+                  setNewUser((prev) => ({ ...prev, role: e.target.value }))
+                }
               >
                 {ROLES.map((role) => (
                   <option key={role.value} value={role.value}>
@@ -271,7 +300,10 @@ export function Users() {
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Сброс пароля
               </h3>
-              <button onClick={() => setIsResetModalOpen(false)} className="text-sm text-gray-500">
+              <button
+                onClick={() => setIsResetModalOpen(false)}
+                className="text-sm text-gray-500"
+              >
                 Закрыть
               </button>
             </div>

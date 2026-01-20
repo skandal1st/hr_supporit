@@ -38,6 +38,7 @@ def create_user(
         username=payload.username,
         hashed_password=get_password_hash(payload.password),
         role=payload.role,
+        full_name=payload.full_name,
     )
     db.add(user)
     db.commit()
@@ -90,6 +91,8 @@ def update_user(
             "user",
             f"id={user.id}, role: {old_role} -> {user.role}",
         )
+    if payload.full_name is not None:
+        user.full_name = payload.full_name
     db.commit()
     db.refresh(user)
     return user
