@@ -2,10 +2,13 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_roles
+from app.core.security import get_password_hash
 from app.models.department import Department
 from app.models.employee import Employee
 from app.models.equipment import Equipment
 from app.models.position import Position
+from app.models.user import User
+from app.services.audit import log_action
 from app.services.integrations import (
     ad_sync_users,
     create_supporit_user,
@@ -85,6 +88,7 @@ def pull_users_from_ad(db: Session = Depends(get_db)) -> dict:
     "/supporit/pull-users", dependencies=[Depends(require_roles(["it", "admin"]))]
 )
 def pull_users_from_supporit(db: Session = Depends(get_db)) -> dict:
+    """Синхронизация сотрудников (employees) из SupportIT"""
     users = fetch_supporit_users()
     created = 0
     updated = 0
@@ -110,6 +114,81 @@ def pull_users_from_supporit(db: Session = Depends(get_db)) -> dict:
             created += 1
     db.commit()
     return {"created": created, "updated": updated}
+
+
+@router.post(
+    "/supporit/pull-accounts", dependencies=[Depends(require_roles(["admin"]))]
+)
+def pull_accounts_from_supporit(
+    db: Session = Depends(get_db),
+    default_password: str = Query(
+        default="ChangeMe123!",
+        description="Пароль по умолчанию для новых пользователей",
+    ),
+) -> dict:
+    """Синхронизация учётных записей (users) из SupportIT в HR_desk.
+
+    Роли маппятся:
+    - admin -> admin
+    - it_specialist -> it
+    - employee -> auditor (только просмотр)
+    """
+    supporit_users = fetch_supporit_users()
+    created = 0
+    updated = 0
+    skipped = 0
+
+    # Маппинг ролей SupportIT -> HR_desk
+    role_mapping = {
+        "admin": "admin",
+        "it_specialist": "it",
+        "employee": "auditor",
+    }
+
+    for su in supporit_users:
+        email = su.get("email")
+        if not email:
+            skipped += 1
+            continue
+
+        supporit_role = su.get("role", "employee")
+        hr_role = role_mapping.get(supporit_role, "auditor")
+
+        existing_user = db.query(User).filter(User.username == email).first()
+
+        if existing_user:
+            # Обновляем роль только если она изменилась
+            if existing_user.role != hr_role:
+                existing_user.role = hr_role
+                updated += 1
+            else:
+                skipped += 1
+        else:
+            # Создаём нового пользователя
+            new_user = User(
+                username=email,
+                hashed_password=get_password_hash(default_password),
+                role=hr_role,
+            )
+            db.add(new_user)
+            created += 1
+
+    db.commit()
+    log_action(
+        db,
+        "system",
+        "sync",
+        "users",
+        f"from SupportIT: created={created}, updated={updated}",
+    )
+
+    return {
+        "created": created,
+        "updated": updated,
+        "skipped": skipped,
+        "total": len(supporit_users),
+        "default_password": default_password if created > 0 else None,
+    }
 
 
 @router.post(
