@@ -2,17 +2,20 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_roles
-from app.models.equipment import Equipment
+from app.models.department import Department
 from app.models.employee import Employee
+from app.models.equipment import Equipment
+from app.models.position import Position
 from app.services.integrations import (
     ad_sync_users,
+    create_supporit_user,
     fetch_equipment_for_employee,
     fetch_supporit_users,
     fetch_zup_employees,
     provision_it_accounts,
+    sync_users_to_supporit,
     update_supporit_user,
 )
-
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 
@@ -24,7 +27,9 @@ def supporit_healthcheck() -> dict:
     return {"status": "ok", "users_count": len(users)}
 
 
-@router.get("/supporit/{employee_id}", dependencies=[Depends(require_roles(["it", "admin"]))])
+@router.get(
+    "/supporit/{employee_id}", dependencies=[Depends(require_roles(["it", "admin"]))]
+)
 def get_supporit_equipment(
     employee_id: int,
     db: Session = Depends(get_db),
@@ -76,7 +81,9 @@ def pull_users_from_ad(db: Session = Depends(get_db)) -> dict:
     return {"created": created, "updated": updated}
 
 
-@router.post("/supporit/pull-users", dependencies=[Depends(require_roles(["it", "admin"]))])
+@router.post(
+    "/supporit/pull-users", dependencies=[Depends(require_roles(["it", "admin"]))]
+)
 def pull_users_from_supporit(db: Session = Depends(get_db)) -> dict:
     users = fetch_supporit_users()
     created = 0
@@ -105,7 +112,10 @@ def pull_users_from_supporit(db: Session = Depends(get_db)) -> dict:
     return {"created": created, "updated": updated}
 
 
-@router.post("/supporit/push-contacts", dependencies=[Depends(require_roles(["it", "hr", "admin"]))])
+@router.post(
+    "/supporit/push-contacts",
+    dependencies=[Depends(require_roles(["it", "hr", "admin"]))],
+)
 def push_contacts_to_supporit(
     db: Session = Depends(get_db),
     create_missing: bool = False,
@@ -113,24 +123,103 @@ def push_contacts_to_supporit(
     users = fetch_supporit_users()
     users_by_email = {user.get("email"): user for user in users if user.get("email")}
     updated = 0
+    created = 0
     skipped = 0
-    for employee in db.query(Employee).all():
+
+    for employee in db.query(Employee).filter(Employee.status == "active").all():
         if not employee.email:
             skipped += 1
             continue
+
+        # Получаем название отдела и должности
+        department_name = None
+        position_name = None
+        if employee.department_id:
+            dept = (
+                db.query(Department)
+                .filter(Department.id == employee.department_id)
+                .first()
+            )
+            if dept:
+                department_name = dept.name
+        if employee.position_id:
+            pos = db.query(Position).filter(Position.id == employee.position_id).first()
+            if pos:
+                position_name = pos.name
+
         supporit_user = users_by_email.get(employee.email)
-        if not supporit_user:
-            skipped += 1
-            continue
         payload = {
             "full_name": employee.full_name,
-            "department": None,
-            "position": None,
+            "department": department_name,
+            "position": position_name,
             "phone": employee.internal_phone or employee.external_phone,
         }
-        if update_supporit_user(supporit_user.get("id"), payload):
-            updated += 1
-    return {"updated": updated, "skipped": skipped, "create_missing": create_missing}
+
+        if supporit_user:
+            # Обновляем существующего
+            if update_supporit_user(supporit_user.get("id"), payload):
+                updated += 1
+        elif create_missing:
+            # Создаём нового
+            result = create_supporit_user(
+                email=employee.email,
+                full_name=employee.full_name,
+                department=department_name,
+                position=position_name,
+                phone=employee.internal_phone or employee.external_phone,
+            )
+            if result:
+                created += 1
+        else:
+            skipped += 1
+
+    return {"updated": updated, "created": created, "skipped": skipped}
+
+
+@router.post(
+    "/supporit/sync-all",
+    dependencies=[Depends(require_roles(["it", "admin"]))],
+)
+def sync_all_to_supporit(db: Session = Depends(get_db)) -> dict:
+    """Массовая синхронизация всех активных сотрудников в SupportIT"""
+    users_to_sync = []
+
+    for employee in db.query(Employee).filter(Employee.status == "active").all():
+        if not employee.email:
+            continue
+
+        # Получаем название отдела и должности
+        department_name = None
+        position_name = None
+        if employee.department_id:
+            dept = (
+                db.query(Department)
+                .filter(Department.id == employee.department_id)
+                .first()
+            )
+            if dept:
+                department_name = dept.name
+        if employee.position_id:
+            pos = db.query(Position).filter(Position.id == employee.position_id).first()
+            if pos:
+                position_name = pos.name
+
+        users_to_sync.append(
+            {
+                "email": employee.email,
+                "full_name": employee.full_name,
+                "department": department_name,
+                "position": position_name,
+                "phone": employee.internal_phone or employee.external_phone,
+            }
+        )
+
+    if not users_to_sync:
+        return {"success": True, "message": "No users to sync", "total": 0}
+
+    result = sync_users_to_supporit(users_to_sync)
+    result["total_employees"] = len(users_to_sync)
+    return result
 
 
 @router.post("/zup/pull-users", dependencies=[Depends(require_roles(["hr", "it"]))])
@@ -144,7 +233,9 @@ def pull_users_from_zup(db: Session = Depends(get_db)) -> dict:
         full_name = user.get("full_name") or user.get("fio") or ""
         employee = None
         if external_id:
-            employee = db.query(Employee).filter(Employee.external_id == external_id).first()
+            employee = (
+                db.query(Employee).filter(Employee.external_id == external_id).first()
+            )
         if not employee and email:
             employee = db.query(Employee).filter(Employee.email == email).first()
         if employee:
