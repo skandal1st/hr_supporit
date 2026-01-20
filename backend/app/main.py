@@ -76,7 +76,6 @@ def health_check():
     return {"status": "ok"}
 
 
-@app.on_event("startup")
 def seed_admin_user() -> None:
     if not settings.seed_admin_enabled:
         return
@@ -247,5 +246,6 @@ def start_dismissed_employees_cleanup_worker() -> None:
 @app.on_event("startup")
 def start_background_workers() -> None:
     ensure_schema()
+    seed_admin_user()
     start_due_requests_worker()
     start_dismissed_employees_cleanup_worker()
