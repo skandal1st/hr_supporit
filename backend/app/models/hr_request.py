@@ -14,5 +14,6 @@ class HRRequest(Base):
     effective_date = Column(Date, nullable=True)
     status = Column(String(32), nullable=False, default="new")
     needs_it_equipment = Column(Boolean, default=False)
+    pass_number = Column(String(64), nullable=True)
 
     employee = relationship("Employee")

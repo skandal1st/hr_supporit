@@ -20,6 +20,7 @@ from app.api.routes import (
     org,
     phonebook,
     positions,
+    users,
     zup,
 )
 from app.api.routes import (
@@ -29,9 +30,11 @@ from app.core.config import settings
 from app.core.security import get_password_hash
 from app.db.base import Base
 from app.db.session import SessionLocal, engine
+from app.models.employee import Employee
 from app.models.hr_request import HRRequest
 from app.models.system_settings import SystemSettings
 from app.models.user import User
+from app.services.audit import log_action
 from app.services.hr_requests import process_hr_request
 
 Base.metadata.create_all(bind=engine)
@@ -47,6 +50,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router, prefix=settings.api_v1_prefix)
+app.include_router(users.router, prefix=settings.api_v1_prefix)
 app.include_router(employees.router, prefix=settings.api_v1_prefix)
 app.include_router(departments.router, prefix=settings.api_v1_prefix)
 app.include_router(positions.router, prefix=settings.api_v1_prefix)
@@ -142,6 +146,24 @@ def ensure_schema() -> None:
                 )
             except Exception:
                 pass
+        if "pass_number" not in employee_columns:
+            try:
+                connection.execute(
+                    text("ALTER TABLE employees ADD COLUMN pass_number VARCHAR(64)")
+                )
+            except Exception:
+                pass
+
+        # HR Requests
+        result = connection.execute(text("PRAGMA table_info(hr_requests)"))
+        hr_request_columns = {row[1] for row in result.fetchall()}
+        if "pass_number" not in hr_request_columns:
+            try:
+                connection.execute(
+                    text("ALTER TABLE hr_requests ADD COLUMN pass_number VARCHAR(64)")
+                )
+            except Exception:
+                pass
 
 
 def start_due_requests_worker() -> None:
@@ -167,7 +189,52 @@ def start_due_requests_worker() -> None:
     thread.start()
 
 
+def start_dismissed_employees_cleanup_worker() -> None:
+    """Удаляет уволенных сотрудников после даты увольнения"""
+
+    def _worker() -> None:
+        while True:
+            db = SessionLocal()
+            try:
+                today = date.today()
+                # Находим все выполненные заявки на увольнение с датой <= сегодня
+                fire_requests = (
+                    db.query(HRRequest)
+                    .filter(HRRequest.type == "fire")
+                    .filter(HRRequest.status == "done")
+                    .filter(HRRequest.effective_date.isnot(None))
+                    .filter(HRRequest.effective_date <= today)
+                    .all()
+                )
+                for req in fire_requests:
+                    employee = (
+                        db.query(Employee)
+                        .filter(Employee.id == req.employee_id)
+                        .first()
+                    )
+                    if employee and employee.status == "dismissed":
+                        employee_name = employee.full_name
+                        employee_id = employee.id
+                        db.delete(employee)
+                        db.delete(req)
+                        db.commit()
+                        log_action(
+                            db,
+                            "system",
+                            "delete",
+                            "employee",
+                            f"id={employee_id}, name={employee_name} (уволен)",
+                        )
+            finally:
+                db.close()
+            time.sleep(3600)  # Проверка раз в час
+
+    thread = threading.Thread(target=_worker, daemon=True)
+    thread.start()
+
+
 @app.on_event("startup")
 def start_background_workers() -> None:
     ensure_schema()
     start_due_requests_worker()
+    start_dismissed_employees_cleanup_worker()

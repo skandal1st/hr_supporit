@@ -11,6 +11,7 @@ class HRRequestBase(BaseModel):
     effective_date: Optional[date] = None
     status: str = "new"
     needs_it_equipment: bool = False
+    pass_number: Optional[str] = None
 
 
 class HRRequestCreate(HRRequestBase):

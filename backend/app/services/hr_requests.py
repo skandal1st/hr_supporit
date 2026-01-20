@@ -9,6 +9,7 @@ from app.services.integrations import (
     ad_create_user,
     ad_disable_user,
     block_it_accounts,
+    create_supporit_ticket,
     fetch_equipment_for_employee,
     mailcow_create_mailbox,
     mailcow_disable_mailbox,
@@ -24,33 +25,76 @@ def process_hr_request(db: Session, request: HRRequest) -> HRRequest:
         raise ValueError("Сотрудник не найден")
 
     if request.type == "hire":
-        accounts = provision_it_accounts(employee.full_name)
-        corporate_email = generate_corporate_email(employee.full_name)
-        if not employee.email:
-            employee.email = corporate_email
-        ad_account = ad_create_user(employee.email, employee.full_name) or accounts.ad_account
-        mailcow_created = mailcow_create_mailbox(employee.email, employee.full_name)
-        it_account = ITAccount(
-            employee_id=employee.id,
-            ad_account=ad_account,
-            mailcow_account=employee.email if mailcow_created else accounts.mailcow_account,
-            messenger_account=accounts.messenger_account,
-        )
-        db.add(it_account)
+        # Получаем номер пропуска из заявки или сотрудника
+        pass_number = request.pass_number or employee.pass_number
+
+        if request.needs_it_equipment:
+            # Создаем ИТ-учетки
+            accounts = provision_it_accounts(employee.full_name)
+            corporate_email = generate_corporate_email(employee.full_name)
+            if not employee.email:
+                employee.email = corporate_email
+            ad_account = (
+                ad_create_user(employee.email, employee.full_name)
+                or accounts.ad_account
+            )
+            mailcow_created = mailcow_create_mailbox(employee.email, employee.full_name)
+            it_account = ITAccount(
+                employee_id=employee.id,
+                ad_account=ad_account,
+                mailcow_account=employee.email
+                if mailcow_created
+                else accounts.mailcow_account,
+                messenger_account=accounts.messenger_account,
+            )
+            db.add(it_account)
+
+            send_email(
+                employee.email or "hr@company.local",
+                "Инструкции ИБ и доступы",
+                "Аккаунты созданы, ознакомьтесь с инструкцией.",
+            )
+            send_internal_notification(f"Созданы ИТ-учетки для {employee.full_name}")
+
+            # Создаем тикет с ИТ-задачами И пропуском СКУД
+            ticket_description = (
+                f"ФИО: {employee.full_name}\n"
+                f"Email: {employee.email}\n"
+                f"Дата выхода: {request.effective_date}"
+            )
+            if pass_number:
+                ticket_description += (
+                    f"\n\nДобавить пропуск в систему СКУД:\n"
+                    f"Данные пропуска: {pass_number}"
+                )
+            create_supporit_ticket(
+                title=f"Онбординг: {employee.full_name}",
+                description=ticket_description,
+                category="hr",
+            )
+        else:
+            # Сотрудник НЕ использует ИТ - создаем отдельный тикет только для СКУД
+            if pass_number:
+                create_supporit_ticket(
+                    title=f"Добавить пропуск в СКУД: {employee.full_name}",
+                    description=(
+                        f"ФИО: {employee.full_name}\n"
+                        f"Дата выхода: {request.effective_date}\n\n"
+                        f"Добавить пропуск в систему СКУД:\n"
+                        f"Данные пропуска: {pass_number}"
+                    ),
+                    category="hr",
+                )
+
         employee.status = "active"
         request.status = "done"
-
-        send_email(
-            employee.email or "hr@company.local",
-            "Инструкции ИБ и доступы",
-            "Аккаунты созданы, ознакомьтесь с инструкцией.",
-        )
-        send_internal_notification(f"Созданы ИТ-учетки для {employee.full_name}")
     elif request.type == "fire":
         employee.status = "dismissed"
         request.status = "done"
 
-        accounts = db.query(ITAccount).filter(ITAccount.employee_id == employee.id).all()
+        accounts = (
+            db.query(ITAccount).filter(ITAccount.employee_id == employee.id).all()
+        )
         block_it_accounts([acc.ad_account for acc in accounts if acc.ad_account])
         for account in accounts:
             if account.ad_account:

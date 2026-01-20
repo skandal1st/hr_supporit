@@ -10,6 +10,7 @@ import { HRPanel } from "./pages/HRPanel";
 import { OrgChart } from "./pages/OrgChart";
 import { Phonebook } from "./pages/Phonebook";
 import { Settings } from "./pages/Settings";
+import { Users } from "./pages/Users";
 
 export default function App() {
   const [isAuthed, setIsAuthed] = useState(
@@ -67,13 +68,14 @@ export default function App() {
   }
 
   return (
-    <Layout isAuthed={isAuthed} isHRorIT={isHRorIT}>
+    <Layout isAuthed={isAuthed} isHRorIT={isHRorIT} userRole={userRole}>
       <Routes>
         <Route path="/" element={<Phonebook />} />
         <Route path="/birthdays" element={<Birthdays />} />
         {isHRorIT && <Route path="/org" element={<OrgChart />} />}
         {isHRorIT && <Route path="/hr" element={<HRPanel />} />}
         {isHRorIT && <Route path="/audit" element={<Audit />} />}
+        {userRole === "admin" && <Route path="/users" element={<Users />} />}
         {isHRorIT && <Route path="/settings" element={<Settings />} />}
       </Routes>
       {/* Кнопка логина в нижнем левом углу - видна всем, но только HR/IT могут войти */}

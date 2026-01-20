@@ -16,6 +16,7 @@ class EmployeeBase(BaseModel):
     status: str = "candidate"
     uses_it_equipment: bool = False
     external_id: Optional[str] = None
+    pass_number: Optional[str] = None
 
 
 class EmployeeCreate(EmployeeBase):
@@ -34,6 +35,7 @@ class EmployeeUpdate(BaseModel):
     status: Optional[str] = None
     uses_it_equipment: Optional[bool] = None
     external_id: Optional[str] = None
+    pass_number: Optional[str] = None
 
 
 class EmployeeOut(EmployeeBase):

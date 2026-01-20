@@ -6,6 +6,7 @@ import {
   Phone,
   Settings,
   ShieldCheck,
+  Users,
 } from "lucide-react";
 
 type NavItem = {
@@ -13,6 +14,7 @@ type NavItem = {
   path: string;
   icon: React.ComponentType<{ className?: string }>;
   requiresAuth?: boolean;
+  adminOnly?: boolean;
 };
 
 const allNavItems: NavItem[] = [
@@ -21,19 +23,34 @@ const allNavItems: NavItem[] = [
   { name: "Оргструктура", path: "/org", icon: GitBranch, requiresAuth: true },
   { name: "HR-панель", path: "/hr", icon: ClipboardList, requiresAuth: true },
   { name: "Аудит", path: "/audit", icon: ShieldCheck, requiresAuth: true },
+  {
+    name: "Пользователи",
+    path: "/users",
+    icon: Users,
+    requiresAuth: true,
+    adminOnly: true,
+  },
   { name: "Настройки", path: "/settings", icon: Settings, requiresAuth: true },
 ];
 
 type SidebarProps = {
   isAuthed?: boolean;
   isHRorIT?: boolean;
+  userRole?: string | null;
 };
 
-export function Sidebar({ isAuthed = false, isHRorIT = false }: SidebarProps) {
+export function Sidebar({
+  isAuthed = false,
+  isHRorIT = false,
+  userRole = null,
+}: SidebarProps) {
   // Фильтруем пункты меню в зависимости от авторизации
-  const navItems = allNavItems.filter(
-    (item) => !item.requiresAuth || (isAuthed && isHRorIT),
-  );
+  const navItems = allNavItems.filter((item) => {
+    if (item.adminOnly) {
+      return isAuthed && userRole === "admin";
+    }
+    return !item.requiresAuth || (isAuthed && isHRorIT);
+  });
 
   return (
     <aside className="fixed top-0 left-0 h-full w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 z-40">

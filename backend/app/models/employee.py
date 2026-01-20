@@ -19,6 +19,7 @@ class Employee(Base):
     status = Column(String(32), nullable=False, default="candidate")
     uses_it_equipment = Column(Boolean, default=False)
     external_id = Column(String(128), nullable=True)
+    pass_number = Column(String(64), nullable=True)
 
     position = relationship("Position")
     department = relationship("Department", foreign_keys=[department_id])

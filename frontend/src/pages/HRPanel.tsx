@@ -10,6 +10,7 @@ type HRRequest = {
   effective_date?: string;
   status: string;
   needs_it_equipment: boolean;
+  pass_number?: string;
 };
 
 type Department = {
@@ -52,6 +53,7 @@ export function HRPanel() {
     email: "",
     birthday: "",
     uses_it_equipment: false,
+    pass_number: "",
   });
 
   const loadData = async () => {
@@ -78,7 +80,9 @@ export function HRPanel() {
   };
 
   const handleDepartmentChange = (departmentId: string) => {
-    const department = departments.find((item) => item.id === Number(departmentId));
+    const department = departments.find(
+      (item) => item.id === Number(departmentId),
+    );
     setNewEmployee((prev) => ({
       ...prev,
       department_id: departmentId,
@@ -89,17 +93,24 @@ export function HRPanel() {
   const handleCreateEmployee = async () => {
     setError(null);
     try {
-      const positionId = newEmployee.position_id ? Number(newEmployee.position_id) : undefined;
+      const positionId = newEmployee.position_id
+        ? Number(newEmployee.position_id)
+        : undefined;
       const payload = {
         full_name: newEmployee.full_name,
-        department_id: newEmployee.department_id ? Number(newEmployee.department_id) : undefined,
-        manager_id: newEmployee.manager_id ? Number(newEmployee.manager_id) : undefined,
+        department_id: newEmployee.department_id
+          ? Number(newEmployee.department_id)
+          : undefined,
+        manager_id: newEmployee.manager_id
+          ? Number(newEmployee.manager_id)
+          : undefined,
         position_id: positionId,
         internal_phone: newEmployee.internal_phone || undefined,
         external_phone: newEmployee.external_phone || undefined,
         email: newEmployee.email || undefined,
         birthday: newEmployee.birthday || undefined,
         uses_it_equipment: newEmployee.uses_it_equipment,
+        pass_number: newEmployee.pass_number || undefined,
       };
       const employee = await apiFetch<Employee>("/employees/", {
         method: "POST",
@@ -111,6 +122,7 @@ export function HRPanel() {
         request_date: new Date().toISOString().slice(0, 10),
         effective_date: hireDate || undefined,
         needs_it_equipment: newEmployee.uses_it_equipment,
+        pass_number: newEmployee.pass_number || undefined,
       });
       setIsModalOpen(false);
       setNewEmployee({
@@ -123,6 +135,7 @@ export function HRPanel() {
         email: "",
         birthday: "",
         uses_it_equipment: false,
+        pass_number: "",
       });
       await loadData();
     } catch (err) {
@@ -133,7 +146,9 @@ export function HRPanel() {
   return (
     <section className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">HR-панель</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          HR-панель
+        </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400">
           Создание заявок на прием или увольнение.
         </p>
@@ -151,7 +166,9 @@ export function HRPanel() {
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Увольнение сотрудника</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          Увольнение сотрудника
+        </h3>
         <div className="flex flex-wrap gap-2">
           <select
             className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm"
@@ -195,7 +212,10 @@ export function HRPanel() {
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Новый сотрудник
               </h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-sm text-gray-500">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-sm text-gray-500"
+              >
                 Закрыть
               </button>
             </div>
@@ -205,7 +225,12 @@ export function HRPanel() {
                 className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm"
                 placeholder="ФИО"
                 value={newEmployee.full_name}
-                onChange={(event) => setNewEmployee((prev) => ({ ...prev, full_name: event.target.value }))}
+                onChange={(event) =>
+                  setNewEmployee((prev) => ({
+                    ...prev,
+                    full_name: event.target.value,
+                  }))
+                }
               />
               <select
                 className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm"
@@ -222,14 +247,20 @@ export function HRPanel() {
               <select
                 className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm"
                 value={newEmployee.position_id}
-                onChange={(event) => setNewEmployee((prev) => ({ ...prev, position_id: event.target.value }))}
+                onChange={(event) =>
+                  setNewEmployee((prev) => ({
+                    ...prev,
+                    position_id: event.target.value,
+                  }))
+                }
               >
                 <option value="">Должность</option>
                 {positions
                   .filter(
                     (position) =>
                       !newEmployee.department_id ||
-                      position.department_id === Number(newEmployee.department_id),
+                      position.department_id ===
+                        Number(newEmployee.department_id),
                   )
                   .map((position) => (
                     <option key={position.id} value={position.id}>
@@ -257,7 +288,10 @@ export function HRPanel() {
                     }),
                   });
                   setPositions((prev) => [...prev, created]);
-                  setNewEmployee((prev) => ({ ...prev, position_id: String(created.id) }));
+                  setNewEmployee((prev) => ({
+                    ...prev,
+                    position_id: String(created.id),
+                  }));
                 }}
               >
                 Добавить должность
@@ -265,7 +299,12 @@ export function HRPanel() {
               <select
                 className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm"
                 value={newEmployee.manager_id}
-                onChange={(event) => setNewEmployee((prev) => ({ ...prev, manager_id: event.target.value }))}
+                onChange={(event) =>
+                  setNewEmployee((prev) => ({
+                    ...prev,
+                    manager_id: event.target.value,
+                  }))
+                }
               >
                 <option value="">Руководитель</option>
                 {employees.map((employee) => (
@@ -278,19 +317,45 @@ export function HRPanel() {
                 className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm"
                 placeholder="Внутренний телефон"
                 value={newEmployee.internal_phone}
-                onChange={(event) => setNewEmployee((prev) => ({ ...prev, internal_phone: event.target.value }))}
+                onChange={(event) =>
+                  setNewEmployee((prev) => ({
+                    ...prev,
+                    internal_phone: event.target.value,
+                  }))
+                }
               />
               <input
                 className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm"
                 placeholder="Внешний телефон"
                 value={newEmployee.external_phone}
-                onChange={(event) => setNewEmployee((prev) => ({ ...prev, external_phone: event.target.value }))}
+                onChange={(event) =>
+                  setNewEmployee((prev) => ({
+                    ...prev,
+                    external_phone: event.target.value,
+                  }))
+                }
               />
               <input
                 className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm"
                 placeholder="Email"
                 value={newEmployee.email}
-                onChange={(event) => setNewEmployee((prev) => ({ ...prev, email: event.target.value }))}
+                onChange={(event) =>
+                  setNewEmployee((prev) => ({
+                    ...prev,
+                    email: event.target.value,
+                  }))
+                }
+              />
+              <input
+                className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm"
+                placeholder="Номер пропуска"
+                value={newEmployee.pass_number}
+                onChange={(event) =>
+                  setNewEmployee((prev) => ({
+                    ...prev,
+                    pass_number: event.target.value,
+                  }))
+                }
               />
               <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
                 Дата рождения
@@ -298,7 +363,12 @@ export function HRPanel() {
                   className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm"
                   type="date"
                   value={newEmployee.birthday}
-                  onChange={(event) => setNewEmployee((prev) => ({ ...prev, birthday: event.target.value }))}
+                  onChange={(event) =>
+                    setNewEmployee((prev) => ({
+                      ...prev,
+                      birthday: event.target.value,
+                    }))
+                  }
                 />
               </label>
               <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
@@ -317,7 +387,10 @@ export function HRPanel() {
                 type="checkbox"
                 checked={newEmployee.uses_it_equipment}
                 onChange={(event) =>
-                  setNewEmployee((prev) => ({ ...prev, uses_it_equipment: event.target.checked }))
+                  setNewEmployee((prev) => ({
+                    ...prev,
+                    uses_it_equipment: event.target.checked,
+                  }))
                 }
               />
               Использует ИТ-оборудование
