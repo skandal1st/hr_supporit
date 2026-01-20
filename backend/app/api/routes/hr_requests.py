@@ -5,8 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, require_roles
+from app.models.department import Department
 from app.models.employee import Employee
 from app.models.hr_request import HRRequest
+from app.models.position import Position
 from app.models.user import User
 from app.schemas.hr_request import HRRequestCreate, HRRequestOut
 from app.services.audit import log_action
@@ -38,10 +40,25 @@ def create_request(
     db.refresh(request)
     if request.type == "hire" and request.needs_it_equipment:
         email = generate_corporate_email(employee.full_name)
+        
+        # Получаем название отдела и должности
+        department_name = None
+        position_name = None
+        if employee.department_id:
+            dept = db.query(Department).filter(Department.id == employee.department_id).first()
+            if dept:
+                department_name = dept.name
+        if employee.position_id:
+            pos = db.query(Position).filter(Position.id == employee.position_id).first()
+            if pos:
+                position_name = pos.name
+        
         description = (
             "HR: провести онбординг сотрудника.\n"
             f"ФИО: {employee.full_name}\n"
             f"Email: {email}\n"
+            f"Отдел: {department_name or 'Не указан'}\n"
+            f"Должность: {position_name or 'Не указана'}\n"
             f"Дата выхода: {request.effective_date}\n"
         )
         create_supporit_ticket(
@@ -50,6 +67,18 @@ def create_request(
             category="hr",
         )
     if request.type == "fire":
+        # Получаем название отдела и должности
+        department_name = None
+        position_name = None
+        if employee.department_id:
+            dept = db.query(Department).filter(Department.id == employee.department_id).first()
+            if dept:
+                department_name = dept.name
+        if employee.position_id:
+            pos = db.query(Position).filter(Position.id == employee.position_id).first()
+            if pos:
+                position_name = pos.name
+        
         equipment = fetch_equipment_for_employee(employee.id, employee.email)
         equipment_lines = "\n".join(
             f"- {item.get('name') or item.get('type')} ({item.get('inventory_number') or item.get('serial_number')})"
@@ -58,6 +87,9 @@ def create_request(
         description = (
             "HR: увольнение сотрудника.\n"
             f"ФИО: {employee.full_name}\n"
+            f"Email: {employee.email or 'Не указан'}\n"
+            f"Отдел: {department_name or 'Не указан'}\n"
+            f"Должность: {position_name or 'Не указана'}\n"
             f"Дата увольнения: {request.effective_date}\n"
             f"Оборудование:\n{equipment_lines or 'Нет данных'}"
         )

@@ -2,9 +2,11 @@ from datetime import date
 
 from sqlalchemy.orm import Session
 
+from app.models.department import Department
 from app.models.employee import Employee
 from app.models.hr_request import HRRequest
 from app.models.it_account import ITAccount
+from app.models.position import Position
 from app.services.integrations import (
     ad_create_user,
     ad_disable_user,
@@ -23,6 +25,18 @@ def process_hr_request(db: Session, request: HRRequest) -> HRRequest:
     employee = db.query(Employee).filter(Employee.id == request.employee_id).first()
     if not employee:
         raise ValueError("Сотрудник не найден")
+
+    # Получаем название отдела и должности
+    department_name = None
+    position_name = None
+    if employee.department_id:
+        dept = db.query(Department).filter(Department.id == employee.department_id).first()
+        if dept:
+            department_name = dept.name
+    if employee.position_id:
+        pos = db.query(Position).filter(Position.id == employee.position_id).first()
+        if pos:
+            position_name = pos.name
 
     if request.type == "hire":
         # Получаем номер пропуска из заявки или сотрудника
@@ -60,6 +74,8 @@ def process_hr_request(db: Session, request: HRRequest) -> HRRequest:
             ticket_description = (
                 f"ФИО: {employee.full_name}\n"
                 f"Email: {employee.email}\n"
+                f"Отдел: {department_name or 'Не указан'}\n"
+                f"Должность: {position_name or 'Не указана'}\n"
                 f"Дата выхода: {request.effective_date}"
             )
             if pass_number:
@@ -79,6 +95,8 @@ def process_hr_request(db: Session, request: HRRequest) -> HRRequest:
                     title=f"Добавить пропуск в СКУД: {employee.full_name}",
                     description=(
                         f"ФИО: {employee.full_name}\n"
+                        f"Отдел: {department_name or 'Не указан'}\n"
+                        f"Должность: {position_name or 'Не указана'}\n"
                         f"Дата выхода: {request.effective_date}\n\n"
                         f"Добавить пропуск в систему СКУД:\n"
                         f"Данные пропуска: {pass_number}"
@@ -117,6 +135,8 @@ def process_hr_request(db: Session, request: HRRequest) -> HRRequest:
             description=(
                 f"ФИО: {employee.full_name}\n"
                 f"Email: {employee.email}\n"
+                f"Отдел: {department_name or 'Не указан'}\n"
+                f"Должность: {position_name or 'Не указана'}\n"
                 f"Дата увольнения: {request.effective_date}\n\n"
                 f"Оборудование к сдаче:\n{equipment_lines}\n\n"
                 f"Задачи:\n"
