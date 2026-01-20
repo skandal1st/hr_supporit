@@ -47,7 +47,7 @@ def create_request(
         create_supporit_ticket(
             title=f"Онбординг: {employee.full_name}",
             description=description,
-            category="other",
+            category="hr",
         )
     if request.type == "fire":
         equipment = fetch_equipment_for_employee(employee.id, employee.email)
@@ -64,7 +64,7 @@ def create_request(
         create_supporit_ticket(
             title=f"Увольнение: {employee.full_name}",
             description=description,
-            category="other",
+            category="hr",
         )
     log_action(db, user.username, "create", "hr_request", f"id={request.id}")
     return request

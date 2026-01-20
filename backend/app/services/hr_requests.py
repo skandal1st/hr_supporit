@@ -105,6 +105,28 @@ def process_hr_request(db: Session, request: HRRequest) -> HRRequest:
             account.status = "blocked"
 
         equipment = fetch_equipment_for_employee(employee.id, employee.email)
+        
+        # Создаем заявку на сбор оборудования
+        equipment_lines = "\n".join(
+            f"- {item.get('name') or item.get('type')} ({item.get('inventory_number') or item.get('serial_number')})"
+            for item in equipment
+        ) if equipment else "Нет данных"
+        
+        create_supporit_ticket(
+            title=f"Увольнение: сбор оборудования - {employee.full_name}",
+            description=(
+                f"ФИО: {employee.full_name}\n"
+                f"Email: {employee.email}\n"
+                f"Дата увольнения: {request.effective_date}\n\n"
+                f"Оборудование к сдаче:\n{equipment_lines}\n\n"
+                f"Задачи:\n"
+                f"- Собрать оборудование\n"
+                f"- Заблокировать учётные записи\n"
+                f"- Удалить пропуск из СКУД"
+            ),
+            category="hr",
+        )
+        
         if equipment:
             send_internal_notification(
                 f"Оборудование не сдано: {employee.full_name}",
